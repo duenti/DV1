@@ -14,16 +14,104 @@ svg {
   stroke: #fff;
 }
 
+div.tooltip {   
+  position: absolute;           
+  text-align: center;           
+  width: 60px;                  
+  height: 28px;                 
+  padding: 2px;             
+  font: 12px sans-serif;        
+  background: lightsteelblue;   
+  border: 0px;      
+  border-radius: 8px;           
+  pointer-events: none;         
+}
 </style>
 <body>
+<h1>Comunidade 0</h1>
+<label>Comunidade:</label>
+<select name="comunidade">
+</select>
+<button id="comm">Ir</button>
+<div id="form">
+<button id="anterior">Anterior</button>
+<button id="back"><<</button>
+<button id="foward">>></button>
+</div>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
+$.urlParam = function(name){
+	var results = null;
+    results = new RegExp('[\?&amp;]' + name + '=([^&amp;#]*)').exec(window.location.href);
+    if(results) return results[1] || 0;
+    return null;
+}
+
+$(document).ready(function(){
+    $("#back").click(function(){
+        var comm = $.urlParam('comunidade');
+        
+        if(!comm) comm = 0;
+        var anterior = comm;
+        var url = window.location.href.toString().split("?")[0];
+        
+        if(comm == 0) comm = 99;
+        else comm--;
+
+        location.href = url+"?comunidade=" + comm + "&anterior=" + anterior;
+    });
+
+	$("#foward").click(function(){
+        var comm = $.urlParam('comunidade');
+        
+        if(!comm) comm = 0;
+        var anterior = comm;
+        var url = window.location.href.toString().split("?")[0];
+        
+        if(comm == 99) comm = 0;
+        else comm++;
+
+        location.href = url+"?comunidade=" + comm + "&anterior=" + anterior;
+    });
+
+    $("#comm").click(function(){
+        var comm = d3.select("select").node().value;
+        var anterior = $.urlParam('comunidade');
+        var url = window.location.href.toString().split("?")[0];
+        
+        location.href = url+"?comunidade=" + comm + "&anterior=" + anterior;
+    });
+
+    $("#anterior").click(function(){
+        var comm = $.urlParam('anterior');
+        var anterior = $.urlParam('comunidade');
+        var url = window.location.href.toString().split("?")[0];
+        
+        location.href = url+"?comunidade=" + comm + "&anterior=" + anterior;
+    });    
+});
+var comm = $.urlParam('comunidade');
+var ant = $.urlParam('anterior');
+var commH1;
+if(comm) commH1 = "Comunidade Atual: " + comm;
+else commH1 = "Comunidade Atual: 0";
+if(ant) commH1 += " | Comunidade Anterior: " + ant;
+else commH1 += " | Comunidade Anterior: 0";
+
+d3.select("h1").text(commH1);
+
+for(i = 0; i <100; i++){
+   	d3.select("select").append("option")
+   		.attr("value",i)
+  		.text(i)
+}
 
 var radius = 74,
     padding = 10;
 
 var color = d3.scale.ordinal()
-    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+	.range(["#ff0000", "#73006b", "#402020", "#f28979", "#f2853d", "#8c4b00", "#ffc480", "#998773", "#ffaa00", "#736d1d", "#fff780", "#99cc99", "#00f261", "#00735c", "#004b8c", "#0061f2", "#c480ff", "#e200f2", "#992645", "#ffbfc8"]);
 
 var arc = d3.svg.arc()
     .outerRadius(radius)
@@ -33,8 +121,15 @@ var pie = d3.layout.pie()
     .sort(null)
     .value(function(d) { return d.population; });
 
-d3.csv("data.csv", function(error, data) {
-  color.domain(d3.keys(data[0]).filter(function(key) { return key !== "IDPESSOA"; }));
+var div = d3.select("body").append("div")   
+    .attr("class", "tooltip")               
+    .style("opacity", 0);
+
+var csvpath;
+if($.urlParam('comunidade')) csvpath = "similaridades/G" + $.urlParam('comunidade') + ".csv";
+else csvpath = "similaridades/G0.csv";
+d3.csv(csvpath, function(error, data) {
+  color.domain(d3.keys(data[0]).filter(function(key) { return key !== "ID"; }));
 
   data.forEach(function(d) {
     d.ages = color.domain().map(function(name) {
@@ -44,13 +139,16 @@ d3.csv("data.csv", function(error, data) {
 
   var legend = d3.select("body").append("svg")
       .attr("class", "legend")
-      .attr("width", radius * 2)
+      .attr("width", radius * 2.3)
       .attr("height", radius * 2)
     .selectAll("g")
       .data(color.domain().slice().reverse())
     .enter().append("g")
       .attr("transform", function(d, i) { 
-      	return "translate(0," + i * 20 + ")"; 
+      	if(i < 5) 	return "translate(0," + i * 20 + ")";
+      	else if(i < 10) return "translate(" + 40 + "," + (i-5) * 20 + ")";
+      	else if(i < 15) return "translate(" + 80 + "," + (i-10) * 20 + ")";
+      	else return "translate(" + 120 + "," + (i-15) * 20 + ")";
       });
 
   legend.append("rect")
@@ -78,12 +176,25 @@ d3.csv("data.csv", function(error, data) {
     .enter().append("path")
       .attr("class", "arc")
       .attr("d", arc)
+      .on("mouseover", function(d) {      
+            div.transition()        
+                .duration(200)      
+                .style("opacity", .9);      
+            div .html(d.data.name + "<br/>"  + ((d.data.population*100).toFixed(2)) + "%")  
+                .style("left", (d3.event.pageX) + "px")     
+                .style("top", (d3.event.pageY - 28) + "px");    
+            })
+       .on("mouseout", function(d) {       
+            div.transition()        
+                .duration(500)      
+                .style("opacity", 0);   
+        })                  
       .style("fill", function(d) { return color(d.data.name); });
 
   svg.append("text")
       .attr("dy", ".35em")
       .style("text-anchor", "middle")
-      .text(function(d) { return d.State; });
+      .text(function(d) { return d.ID; });
 
 });
 
