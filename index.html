@@ -34,7 +34,7 @@ div.tooltip {
 </select>
 <button id="comm">Ir</button>
 <div id="form">
-<button id="anterior">Anterior</button>
+<button id="anterior">Comparar</button>
 <button id="back"><<</button>
 <button id="foward">>></button>
 </div>
@@ -125,19 +125,161 @@ var div = d3.select("body").append("div")
     .attr("class", "tooltip")               
     .style("opacity", 0);
 
-var csvpath;
-if($.urlParam('comunidade')) csvpath = "similaridades/G" + $.urlParam('comunidade') + ".csv";
-else csvpath = "similaridades/G0.csv";
+var csvpath, csvpathAnt;
+var dataAtual, dataAnt;
+var size;
+
+if($.urlParam('comunidade')){
+	csvpath = "similaridades/G" + $.urlParam('comunidade') + ".csv";
+	csvpathAnt = "similaridades/G" + $.urlParam('anterior') + ".csv"
+}else{
+	csvpath = "similaridades/G0.csv";
+	csvpathAnt = csvpath;
+}
+
+
 d3.csv(csvpath, function(error, data) {
-  color.domain(d3.keys(data[0]).filter(function(key) { return key !== "ID"; }));
+	var indices = new Array(data.length);
+	var newData;  
 
-  data.forEach(function(d) {
-    d.ages = color.domain().map(function(name) {
-      return {name: name, population: +d[name]};
-    });
-  });
+  	color.domain(d3.keys(data[0]).filter(function(key) { return key !== "ID"; }));
 
-  var legend = d3.select("body").append("svg")
+  	data.forEach(function(d) {
+	    d.ages = color.domain().map(function(name) {
+	    	return {name: name, population: +d[name]};
+	    });
+  	});
+
+  	d3.csv(csvpathAnt, function(error, data2) {
+	  	color.domain(d3.keys(data2[0]).filter(function(key) { return key !== "ID"; }));
+
+	  	newData = "teste";
+	  	size = data2.length;
+
+	  	data2.forEach(function(d2) {
+	    	d2.ages = color.domain().map(function(name) {
+	      		return {name: name, population: +d2[name]};
+	    	});
+	  	});
+
+	  	//Similaridade
+	  	for(i=0;i<data.length;i++){
+	  		data[i].conserv = false;
+	  		data[i].ivisible = false;
+	  	}
+
+	  	for(i = 0; i < data.length; i++){
+	  		for(j = 0; j < data2.length; j++){
+	  			var dist = 0;
+	  			for(aa=0; aa<20; aa++){
+	  				//fazer com lista de i/j
+		  			var val1 = data[i].ages[aa].population*100;
+		  			var val2 =  data2[j].ages[aa].population*100
+		  			dist += (val1 - val2)*(val1 - val2);
+	  			}
+		  		dist = Math.sqrt(dist);
+		  		var str = "";
+		  		if(dist <= 11){
+	  				str += i + " / " + j;
+		  			//alert(str);
+		  			indices[i] = j;
+		  			data[i].conserv = true;
+	  			}
+	  		}
+	  	}
+
+
+
+	  	if(size > data.length){
+			newData = new Array(size);	  		
+	  	}else{
+	  		newData = new Array(data.length);
+	  	}
+  	});
+	//for(i=0;i<indices.length;i++){alert(indices[i]);}  
+	alert("Carregando...");
+
+	//Ordena 2
+	for(i=0;i<data.length;i++){
+		switch(data[i].ID){
+			case "P0":
+				newData[0] = data[i];
+				break;
+			case "P1":
+				newData[1] = data[i];
+				break;
+			case "P2":
+				newData[2] = data[i];
+				break;
+			case "P3":
+				newData[3] = data[i];
+				break;
+			case "P4":
+				newData[4] = data[i];
+				break;
+			case "P5":
+				newData[5] = data[i];
+				break;
+			case "P6":
+				newData[6] = data[i];
+				break;
+			case "P7":
+				newData[7] = data[i];
+				break;
+			case "P8":
+				newData[8] = data[i];
+				break;
+			case "P9":
+				newData[9] = data[i];
+				break;
+			case "P10":
+				newData[10] = data[i];
+				break;
+			default:
+				newData[11] = data[i];
+		}
+	}
+
+	//Procurar por espaços ainda vazios
+	for(i=0;i<newData.length;i++){
+		if(typeof newData[i] == "undefined"){
+			newData[i] = null;
+		}
+	}
+
+
+	//Ordena
+/*
+	for(i=0; i<indices.length; i++){
+		if(typeof indices[i] != "undefined"){
+			newData[indices[i]] = data[i];
+			//alert("CONSERV: " + indices[i] + " = " + data[i].ID);
+		}
+	}
+
+	for(i=0;i<data.length;i++){
+		if(!data[i].conserv){
+			for(j=0;j<newData.length;j++){
+				if(typeof newData[j] == "undefined"){
+					newData[j] = data[i];
+					//alert("NCONSERV: " + j + "=  " + data[i].ID);
+					break;
+				}
+			}
+		}
+	}
+
+	//Procurar por espaços ainda vazios
+	for(i=0;i<newData.length;i++){
+		if(typeof newData[i] == "undefined"){
+			newData[i] = data[0];
+		}
+	}
+*/
+	//Substitui data
+	data = newData;
+
+  	var legend = d3.select("body").append("svg")
       .attr("class", "legend")
       .attr("width", radius * 2.3)
       .attr("height", radius * 2)
@@ -165,14 +307,22 @@ d3.csv(csvpath, function(error, data) {
   var svg = d3.select("body").selectAll(".pie")
       .data(data)
     .enter().append("svg")
+      .attr("id",function(d) { if(d === null) return "null"; return d.ID; })
       .attr("class", "pie")
       .attr("width", radius * 2)
       .attr("height", radius * 2)
+      .style("opacity",function(d){
+      	if(d === null) return 0.0;
+      	if(!d.conserv) 
+      		return 0.25; 
+      	else 
+      		return 0.9
+      })
     .append("g")
       .attr("transform", "translate(" + radius + "," + radius + ")");
 
   svg.selectAll(".arc")
-      .data(function(d) { return pie(d.ages); })
+      .data(function(d) { if(d === null) return 0.0; return pie(d.ages); })
     .enter().append("path")
       .attr("class", "arc")
       .attr("d", arc)
@@ -194,8 +344,9 @@ d3.csv(csvpath, function(error, data) {
   svg.append("text")
       .attr("dy", ".35em")
       .style("text-anchor", "middle")
-      .text(function(d) { return d.ID; });
+      .text(function(d) { if(d === null) return "null"; return d.ID; });
 
 });
+
 
 </script>
